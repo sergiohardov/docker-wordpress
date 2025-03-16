@@ -43,7 +43,7 @@ services:
       - "./theme:/var/www/html/wp-content/themes/${WP_THEME_NAME}"
 
   composer:
-    image: composer:${CMP_VERSION}
+    image: composer:${COMPOSER_VERSION}
     container_name: composer
     working_dir: /app
     volumes:
@@ -51,7 +51,7 @@ services:
     # entrypoint: [ "tail", "-f", "/dev/null" ]
 
   node:
-    image: node:${ND_VERSION}
+    image: node:${NODE_VERSION}
     container_name: node
     working_dir: /app
     volumes:
