@@ -14,33 +14,57 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    restart: always
     depends_on:
       - mysql
     ports:
       - "${PMA_PORT}:80"
     environment:
-      PMA_HOST: mysql
+      PMA_HOST: mysql # link to service name
       MYSQL_USERNAME: ${MYSQL_USER}
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
 
-  wordpress:
-    image: wordpress:${WP_VERSION}
+  php:
+    build:
+      dockerfile: docker/php/Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VERSION}
     restart: always
-    depends_on:
-      - mysql
-    ports:
-      - "${WP_PORT}:80"
-    environment:
-      WORDPRESS_DB_HOST: mysql:${MYSQL_PORT}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_USER}
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DEBUG: 1
     volumes:
       - "./.tmp/wordpress:/var/www/html"
-      - "./docker/wordpress/custom.ini:/usr/local/etc/php/conf.d/custom.ini"
+      - "./docker/php/custom.php.ini:/usr/local/etc/php/conf.d/custom.ini"
       - "./plugin:/var/www/html/wp-content/plugins/${WP_PLUGIN_NAME}"
       - "./theme:/var/www/html/wp-content/themes/${WP_THEME_NAME}"
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: always
+    depends_on:
+      - php
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - "./.tmp/wordpress:/var/www/html"
+      - "./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro"
+
+  wp-cli:
+    image: wordpress:cli
+    depends_on:
+      - mysql
+    environment:
+      WORDPRESS_VERSION: ${WP_VERSION}
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_URL: ${WP_URL}
+      WORDPRESS_TITLE: ${WP_TITLE}
+      WORDPRESS_LOGIN: ${WP_LOGIN}
+      WORDPRESS_PASSWORD: ${WP_PASSWORD}
+      WORDPRESS_EMAIL: ${WP_EMAIL}
+    volumes:
+      - "./.tmp/wordpress:/var/www/html"
+      - "./docker/wp-cli/custom.php.ini:/usr/local/etc/php/conf.d/custom.ini"
 
   composer:
     image: composer:${COMPOSER_VERSION}
@@ -48,7 +72,6 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
-    # entrypoint: [ "tail", "-f", "/dev/null" ]
 
   node:
     image: node:${NODE_VERSION}
@@ -56,4 +79,4 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
-    # entrypoint: [ "tail", "-f", "/dev/null" ]
+
